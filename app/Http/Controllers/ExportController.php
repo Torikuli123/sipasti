@@ -52,7 +52,7 @@ class ExportController extends Controller
             'filename'   => 'nullable|string|max:100',
         ]);
 
-        $query = Arsip::query();
+        $query = Arsip::query()->with('user');
 
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->start_date);
@@ -67,88 +67,58 @@ class ExportController extends Controller
         $arsips = $query->orderByDesc('created_at')->get();
         $filename = ($request->filename ?: 'export_arsip') . '.xlsx';
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Arsip');
-
-        // Set column headers
-        $headers = [
-            'ID Arsip',
-            'Nomor Definitif',
-            'Nomor Arsip Sementara',
-            'Seri',
-            'Masalah / Sub Seri',
-            'Kode Klasifikasi',
-            'Isi Informasi',
-            'Tanggal Tertua',
-            'Tanggal Termuda',
-            'Kondisi',
-            'Jumlah',
-            'Satuan Arsip',
-            'Tingkat Perkembangan',
-            'Status',
-            'Kategori',
-        ];
-
-        $headerRow = 1;
-        foreach ($headers as $colIndex => $header) {
-            $colLetter = chr(65 + $colIndex);
-            $cell = $sheet->getCell("{$colLetter}{$headerRow}");
-            $cell->setValue($header);
-
-            // Style header
-            $cell->getStyle()->getFont()->setBold(true)->setColor(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE);
-            $cell->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('1D4ED8');
-            $cell->getStyle()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-            $cell->getStyle()->getBorders()->getOutline()->setBorderStyle(Border::BORDER_THIN);
+        $templatePath = public_path('example.xlsx');
+        
+        if (file_exists($templatePath)) {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($templatePath);
+        } else {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         }
 
-        // Add data rows
-        $row = 2;
-        foreach ($arsips as $arsip) {
-            $sheet->setCellValue("A{$row}", $arsip->id);
-            $sheet->setCellValue("B{$row}", $arsip->nomor_definitif);
-            $sheet->setCellValue("C{$row}", $arsip->nomor_sementara);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Optional: Update title year range if data exists
+        if ($arsips->isNotEmpty()) {
+            $minDate = $arsips->min('tanggal_terhitung') ?? $arsips->min('created_at');
+            $maxDate = $arsips->max('tanggal_termuda') ?? $arsips->max('created_at');
+            
+            $minYear = $minDate instanceof \Carbon\Carbon ? $minDate->year : date('Y', strtotime($minDate));
+            $maxYear = $maxDate instanceof \Carbon\Carbon ? $maxDate->year : date('Y', strtotime($maxDate));
+            
+            $sheet->setCellValue('A3', "TAHUN $minYear - $maxYear");
+        }
+
+        // Add data rows starting from row 7
+        $row = 7;
+        foreach ($arsips as $index => $arsip) {
+            $sheet->setCellValue("A{$row}", $arsip->nomor_definitif ?: ($index + 1));
+            $sheet->setCellValue("B{$row}", $arsip->nomor_sementara);
+            $sheet->setCellValue("C{$row}", $arsip->user->name ?? 'Admin');
             $sheet->setCellValue("D{$row}", $arsip->seri);
             $sheet->setCellValue("E{$row}", $arsip->masalah);
             $sheet->setCellValue("F{$row}", $arsip->kode_klasifikasi);
             $sheet->setCellValue("G{$row}", $arsip->isi_informasi);
-            $sheet->setCellValue("H{$row}", $arsip->tanggal_terhitung?->format('Y-m-d'));
-            $sheet->setCellValue("I{$row}", $arsip->tanggal_termuda?->format('Y-m-d'));
+            $sheet->setCellValue("H{$row}", $arsip->tanggal_terhitung?->format('Y.m.d'));
+            $sheet->setCellValue("I{$row}", $arsip->tanggal_termuda?->format('Y.m.d'));
             $sheet->setCellValue("J{$row}", $arsip->kondisi);
             $sheet->setCellValue("K{$row}", $arsip->jumlah && $arsip->satuan_arsip ? "{$arsip->jumlah} {$arsip->satuan_arsip}" : $arsip->jumlah);
-            $sheet->setCellValue("L{$row}", $arsip->satuan_arsip);
-            $sheet->setCellValue("M{$row}", $arsip->tingkat_perkembangan);
-            $sheet->setCellValue("N{$row}", $arsip->status);
-            $sheet->setCellValue("O{$row}", $arsip->kategori);
-
-            // Style data rows
-            foreach (range('A', 'O') as $colLetter) {
-                $cell = $sheet->getCell("{$colLetter}{$row}");
-                $cell->getStyle()->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->setColor(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_GRAY);
-                $cell->getStyle()->getAlignment()->setVertical(Alignment::VERTICAL_TOP)->setWrapText(true);
-            }
-
+            $sheet->setCellValue("L{$row}", $arsip->tingkat_perkembangan);
+            $sheet->setCellValue("M{$row}", $arsip->indeks_nama);
+            $sheet->setCellValue("P{$row}", $arsip->indeks_tempat);
+            $sheet->setCellValue("S{$row}", $arsip->indeks_masalah);
+            $sheet->setCellValue("T{$row}", $arsip->daftar_singkatan);
+            $sheet->setCellValue("U{$row}", $arsip->kepanjangan_singkatan);
+            $sheet->setCellValue("V{$row}", $arsip->daftar_istilah);
+            $sheet->setCellValue("W{$row}", $arsip->arti_istilah);
+            
+            // Apply borders to the new data row
+            $sheet->getStyle("A{$row}:X{$row}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            
             $row++;
         }
 
-        // Auto-size columns
-        foreach (range('A', 'O') as $colLetter) {
-            $sheet->getColumnDimension($colLetter)->setAutoSize(true);
-        }
-
-        // Set minimum column width
-        foreach (range('A', 'O') as $colLetter) {
-            if ($sheet->getColumnDimension($colLetter)->getWidth() < 12) {
-                $sheet->getColumnDimension($colLetter)->setWidth(12);
-            }
-        }
-
-        // Freeze header row
-        $sheet->freezePane('A2');
-
         // Generate Excel file
-        $writer = new Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
 
         return response()->stream(function () use ($writer) {
             $writer->save('php://output');

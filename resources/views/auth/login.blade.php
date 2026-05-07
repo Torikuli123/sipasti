@@ -30,11 +30,11 @@
         <form method="POST" action="{{ route('login.post') }}">
             @csrf
             <div class="form-group" style="margin-bottom: 14px;">
-                <label class="form-label">Email Address</label>
+                <label class="form-label">Username</label>
                 <div style="position: relative;">
-                    <i class="fas fa-envelope" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
-                    <input type="email" name="email" class="form-control" style="padding-left: 32px;"
-                        placeholder="name@organization.com" value="{{ old('email') }}" required autofocus>
+                    <i class="fas fa-user" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                    <input type="text" name="username" class="form-control" style="padding-left: 32px;"
+                        placeholder="Masukkan username" value="{{ old('username') }}" required autofocus>
                 </div>
             </div>
 

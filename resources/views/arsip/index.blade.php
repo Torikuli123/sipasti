@@ -21,26 +21,26 @@
         <div class="stat-icon blue"><i class="fas fa-database"></i></div>
         <div>
             <div class="stat-label">Total Records</div>
-            <div class="stat-value">{{ $total ?? '12,482' }}</div>
-            <div class="stat-change"><i class="fas fa-arrow-up"></i> +12% from last month</div>
+            <div class="stat-value">{{ number_format($total) }}</div>
+            <div class="stat-change" style="color:var(--text-muted);">Keseluruhan data arsip</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon green"><i class="fas fa-file-alt"></i></div>
         <div>
             <div class="stat-label">Active Reports</div>
-            <div class="stat-value">{{ $active ?? '854' }}</div>
-            <div class="stat-change" style="color:var(--text-muted);">System-wide active files</div>
+            <div class="stat-value">{{ number_format($active) }}</div>
+            <div class="stat-change" style="color:var(--text-muted);">Arsip berstatus aktif</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon orange"><i class="fas fa-hdd"></i></div>
         <div>
-            <div class="stat-label">Storage Used</div>
-            <div class="stat-value">245 GB</div>
+            <div class="stat-label">Storage Efficiency</div>
+            <div class="stat-value">Optimized</div>
             <div style="margin-top:6px;">
                 <div class="progress-bar" style="height:5px; background:var(--border); border-radius:3px; overflow:hidden;">
-                    <div style="width:68%; height:100%; background:var(--accent); border-radius:3px;"></div>
+                    <div style="width:100%; height:100%; background:var(--success); border-radius:3px;"></div>
                 </div>
             </div>
         </div>
@@ -49,8 +49,8 @@
         <div class="stat-icon" style="background:#FEF2F2; color:var(--danger);"><i class="fas fa-clock"></i></div>
         <div>
             <div class="stat-label">Pending Review</div>
-            <div class="stat-value">42</div>
-            <div class="stat-change down"><i class="fas fa-exclamation"></i> Requires attention</div>
+            <div class="stat-value">{{ \App\Models\Arsip::where('status', 'pending')->count() }}</div>
+            <div class="stat-change down" style="color:var(--text-muted);">Membutuhkan tindakan</div>
         </div>
     </div>
 </div>
@@ -58,30 +58,39 @@
 <!-- Table Card -->
 <div class="section-card">
     <!-- Filter Bar -->
-    <div class="filter-bar">
+    <form action="{{ route('arsip.index') }}" method="GET" class="filter-bar" id="filterForm">
         <span class="filter-label">Filter by:</span>
         <select class="filter-select" name="category" onchange="this.form.submit()">
-            <option>All Categories</option>
-            <option>Finance</option>
-            <option>Legal</option>
-            <option>HR Records</option>
-            <option>Strategy</option>
+            <option value="">Semua Kategori</option>
+            @foreach($categories as $cat)
+                <option value="{{ $cat }}" {{ request('category') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+            @endforeach
         </select>
-        <select class="filter-select" name="status">
-            <option>Status</option>
-            <option>Active</option>
-            <option>Archived</option>
-            <option>Pending</option>
+        <select class="filter-select" name="status" onchange="this.form.submit()">
+            <option value="">Semua Status</option>
+            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+            <option value="archived" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
+            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
         </select>
-        <span class="showing-info">Showing 1–10 of {{ $total ?? '12,482' }}</span>
-    </div>
+        
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+            <div class="search-box" style="margin:0; padding:4px 12px; border-radius:var(--radius-sm);">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" placeholder="Cari nomor atau judul..." value="{{ request('search') }}" style="width:180px;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Cari</button>
+            @if(request()->anyFilled(['category', 'status', 'search']))
+                <a href="{{ route('arsip.index') }}" class="btn btn-outline btn-sm">Reset</a>
+            @endif
+        </div>
+    </form>
 
     <!-- Table -->
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>ID Archive</th>
+                    <th>Nomor Definitif</th>
                     <th>Judul Arsip</th>
                     <th>Kategori</th>
                     <th>Tanggal Upload</th>
@@ -90,28 +99,28 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($arsips ?? [] as $arsip)
+                @forelse($arsips as $arsip)
                 <tr>
-                    <td><span class="doc-id">{{ $arsip->nomor_definitif }}</span></td>
+                    <td><span class="doc-id">{{ $arsip->nomor_definitif ?: '-' }}</span></td>
                     <td>
                         <div class="doc-title">{{ $arsip->judul }}</div>
-                        <div class="doc-file">{{ $arsip->file_name ?? '' }}</div>
+                        <div class="doc-file">{{ $arsip->file_name ?? 'No attachment' }}</div>
                     </td>
                     <td>
-                        <span class="badge-cat cat-{{ strtolower($arsip->kategori ?? 'finance') }}">{{ $arsip->kategori ?? '-' }}</span>
+                        <span class="badge-cat cat-{{ strtolower($arsip->kategori ?? 'umum') }}">{{ $arsip->kategori ?? '-' }}</span>
                     </td>
-                    <td>{{ $arsip->created_at ? $arsip->created_at->format('d M Y') : '-' }}</td>
+                    <td>{{ $arsip->created_at->format('d M Y') }}</td>
                     <td>
-                        <span class="status-badge status-{{ strtolower($arsip->status ?? 'active') }}">
+                        <span class="status-badge status-{{ strtolower($arsip->status) }}">
                             <span style="width:5px; height:5px; border-radius:50%; background:currentColor; display:inline-block;"></span>
-                            {{ ucfirst($arsip->status ?? 'Active') }}
+                            {{ ucfirst($arsip->status) }}
                         </span>
                     </td>
                     <td>
                         <div class="action-btns">
-                            <button class="btn-icon view" title="View"><i class="fas fa-eye"></i></button>
-                            <a href="{{ route('arsip.edit', $arsip->id) }}" class="btn-icon edit" title="Edit"><i class="fas fa-pen"></i></a>
-                            <form method="POST" action="{{ route('arsip.destroy', $arsip->id) }}" onsubmit="return confirm('Yakin hapus arsip ini?')">
+                            <a href="{{ route('arsip.show', $arsip) }}" class="btn-icon view" title="View"><i class="fas fa-eye"></i></a>
+                            <a href="{{ route('arsip.edit', $arsip) }}" class="btn-icon edit" title="Edit"><i class="fas fa-pen"></i></a>
+                            <form method="POST" action="{{ route('arsip.destroy', $arsip) }}" onsubmit="return confirm('Yakin hapus arsip ini?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-icon delete" title="Delete"><i class="fas fa-trash"></i></button>
                             </form>
@@ -119,57 +128,27 @@
                     </td>
                 </tr>
                 @empty
-                {{-- Demo rows --}}
-                @php
-                $demoData = [
-                    ['#ARC-2024-09', 'Laporan Keuangan Q1 2024', 'finance', 'Financial_Report_Q1.pdf', '12 Nov 2024', 'active'],
-                    ['#ARC-2024-045', 'Surat Keputusan Direksi No. 4', 'legal', 'SK_Dir_04_2024.docx', '15 Mar 2024', 'active'],
-                    ['#ARC-2023-982', 'Data Karyawan Periode 2023', 'hr', 'Employee_Records_2023.xlsx', '20 Dec 2023', 'archived'],
-                    ['#ARC-2024-172', 'Kontrak Vendor IT Services', 'legal', 'Vendor_ContractIT.pdf', '05 Apr 2024', 'active'],
-                ];
-                @endphp
-                @foreach($demoData as $d)
                 <tr>
-                    <td><span class="doc-id">{{ $d[0] }}</span></td>
-                    <td>
-                        <div class="doc-title">{{ $d[1] }}</div>
-                        <div class="doc-file">{{ $d[2] }}</div>
-                    </td>
-                    <td><span class="badge-cat cat-{{ $d[2] }}">{{ ucfirst($d[2]) }}</span></td>
-                    <td>{{ $d[4] }}</td>
-                    <td>
-                        <span class="status-badge status-{{ $d[5] }}">
-                            <span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span>
-                            {{ ucfirst($d[5]) }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn-icon view"><i class="fas fa-eye"></i></button>
-                            <button class="btn-icon edit"><i class="fas fa-pen"></i></button>
-                            <button class="btn-icon delete"><i class="fas fa-trash"></i></button>
-                        </div>
+                    <td colspan="6" style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="fas fa-folder-open" style="font-size:24px; display:block; margin-bottom:10px;"></i>
+                        Tidak ada arsip yang ditemukan.
                     </td>
                 </tr>
-                @endforeach
                 @endforelse
             </tbody>
         </table>
     </div>
 
     <!-- Pagination -->
+    @if($arsips->hasPages())
     <div class="pagination">
         <div style="display:flex; gap:6px; align-items:center;">
-            <button class="page-btn">Previous</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">Next</button>
+            {{ $arsips->appends(request()->query())->links('pagination::bootstrap-4') }}
         </div>
-        <div class="page-jump">
-            Jump to page:
-            <input type="number" value="1" min="1">
+        <div class="showing-info">
+            Showing {{ $arsips->firstItem() }}–{{ $arsips->lastItem() }} of {{ $arsips->total() }} records
         </div>
     </div>
+    @endif
 </div>
 @endsection

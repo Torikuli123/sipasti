@@ -28,8 +28,9 @@ class ArsipController extends Controller
         $arsips = $query->latest()->paginate(10);
         $total  = Arsip::count();
         $active = Arsip::where('status', 'active')->count();
+        $categories = Arsip::distinct()->pluck('kategori')->filter();
 
-        return view('arsip.index', compact('arsips', 'total', 'active'));
+        return view('arsip.index', compact('arsips', 'total', 'active', 'categories'));
     }
 
     public function create()

@@ -13,9 +13,10 @@ class DatabaseSeeder extends Seeder
     {
         // Create admin user
         User::firstOrCreate(
-            ['email' => 'admin@e-arsip.id'],
+            ['username' => 'admin'],
             [
                 'name'     => 'Admin User',
+                'email'    => 'admin@e-arsip.id',
                 'password' => Hash::make('password'),
             ]
         );
