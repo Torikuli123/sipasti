@@ -77,6 +77,18 @@ class ExportController extends Controller
 
         $sheet = $spreadsheet->getActiveSheet();
 
+        // Clear existing data rows if template is used (from row 7 onwards)
+        $highestRow = $sheet->getHighestRow();
+        if ($highestRow >= 7) {
+            for ($i = 7; $i <= $highestRow; $i++) {
+                foreach (range('A', 'Y') as $column) {
+                    $sheet->setCellValue($column . $i, null);
+                }
+                // Reset styling for the cleared row
+                $sheet->getStyle("A{$i}:Y{$i}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE);
+            }
+        }
+
         // Optional: Update title year range if data exists
         if ($arsips->isNotEmpty()) {
             $minDate = $arsips->min('tanggal_terhitung') ?? $arsips->min('created_at');
@@ -110,9 +122,11 @@ class ExportController extends Controller
             $sheet->setCellValue("U{$row}", $arsip->kepanjangan_singkatan);
             $sheet->setCellValue("V{$row}", $arsip->daftar_istilah);
             $sheet->setCellValue("W{$row}", $arsip->arti_istilah);
+            $sheet->setCellValue("X{$row}", $arsip->kategori);
+            $sheet->setCellValue("Y{$row}", $arsip->status);
             
             // Apply borders to the new data row
-            $sheet->getStyle("A{$row}:X{$row}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            $sheet->getStyle("A{$row}:Y{$row}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
             
             $row++;
         }
