@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h2>Tema Tampilan</h2>
-        <p>Sesuaikan tampilan dashboard E-Arsip.</p>
+        <p>Sesuaikan tampilan dashboard SIPASTI.</p>
     </div>
 </div>
 

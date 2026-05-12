@@ -25,7 +25,7 @@ class ArsipController extends Controller
             });
         }
 
-        $arsips = $query->latest()->paginate(10);
+        $arsips = $query->orderBy('nomor_definitif', 'asc')->paginate(10);
         $total  = Arsip::count();
         $active = Arsip::where('status', 'active')->count();
         $categories = Arsip::distinct()->pluck('kategori')->filter();

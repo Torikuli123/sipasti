@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
             ['username' => 'admin'],
             [
                 'name'     => 'Admin User',
-                'email'    => 'admin@e-arsip.id',
+                'email'    => 'admin@sipasti.id',
                 'password' => Hash::make('password'),
             ]
         );
